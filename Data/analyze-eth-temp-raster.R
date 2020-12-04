@@ -4,28 +4,29 @@ library(leaflet)
 library(rgdal)
 library(tidyverse)
 
-# download ETH Adm0 boundaries and precipitation data from worldclim.org ----
+# download ETH Adm0 boundaries and tmeanipitation data from worldclim.org ----
 ETH_Adm0 <- raster::getData(name = "GADM", country = "ETH", level = 0)
 
-ETH_prec_2.5 <- raster::getData(name = "worldclim", var = "prec",
+ETH_tmean_2.5 <- raster::getData(name = "worldclim", var = "tmean",
                                 res = 2.5) # rasterstack
 
-# Restrict to Nov (rasterlayer)
-ETH_prec_2.5_Nov <- ETH_prec_2.5[[11]]
+# Restrict to Jul (rasterlayer)
+ETH_tmean_2.5_Jul <- ETH_tmean_2.5[[7]]
 
 # Crop and Mask to Ethiopia extent 
-ETH_prec_2.5_Nov_Crop_Unmasked <- raster::crop(x = ETH_prec_2.5_Nov, y = ETH_Adm0)
-ETH_prec_2.5_Nov_Crop <- raster::mask(x = ETH_prec_2.5_Nov_Crop_Unmasked, mask = ETH_Adm0)
+ETH_tmean_2.5_Jul_Crop_Unmasked <- raster::crop(x = ETH_tmean_2.5_Jul, y = ETH_Adm0)
+ETH_tmean_2.5_Jul_Crop <- raster::mask(x = ETH_tmean_2.5_Jul_Crop_Unmasked, mask = ETH_Adm0)
 
 # colormap
-raster_colorPal_prec_Nov <- colorNumeric(palette = topo.colors(64),
-                                         domain = values(ETH_prec_2.5_Nov_Crop),
+raster_colorPal_tmean_Jul <- colorNumeric(palette = topo.colors(64),
+                                         domain = values(ETH_tmean_2.5_Jul_Crop),
                                          na.color = NA)
-# map precipitation
+# map tmeanipitation
 leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
-  addRasterImage(x = ETH_prec_2.5_Nov_Crop,
-                 color = raster_colorPal_prec_Nov) %>%
-  addLegend(title = "Nov precipitation (mm)<br>(2.5' res)",
-            values = values(ETH_prec_2.5_Nov_Crop),
-            pal = raster_colorPal_prec_Nov)
+  addRasterImage(x = ETH_tmean_2.5_Jul_Crop,
+                 color = raster_colorPal_tmean_Jul) %>%
+  addLegend(title = "Jul average temp (C)<br>(2.5' res)",
+            values = values(ETH_tmean_2.5_Jul_Crop),
+            pal = raster_colorPal_tmean_Jul)
+

@@ -17,4 +17,4 @@ basemap %>%
                    color='darkblue',
                    radius=10,
                    stroke = F,
-                   popup = Name)
+                   popup = ~Name)
