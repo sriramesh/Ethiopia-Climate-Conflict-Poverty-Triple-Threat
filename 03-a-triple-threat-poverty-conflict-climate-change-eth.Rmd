@@ -14,44 +14,40 @@ library(leaflet)
 library(rgdal)
 library(tidyverse)
 
-# download data: GADM ETH Adm0 boundaries and WorldClim database ----
-ETH_Adm0 <- raster::getData(name = "GADM", country = "ETH", level = 0)
-ETH_bio <- raster::getData(name = "worldclim", var = "bio", res = 2.5) # rasterstack
+# palette used for choropleth maps
+palette_poverty_conflict = "Spectral"
+palette_climate_change = "Accent"
 
-# get annual trends data (bio1, annual mean temp and bio12, precipitation) ----
-ETH_bio1 <- ETH_bio[[1]] # annual mean temp in Ethiopia from 1970 to 2000
-ETH_bio12 <- ETH_bio[[12]] # annual precipitation in Ethiopia from 1970 to 2000
+# load ETH Adm 1 shp ----
+shp <- readOGR("Data/ETH-GADM-Adm-Boundaries", "gadm36_ETH_1")
 
-# Crop and mask each raster layer to Ethiopia extent ----
-ETH_bio1 <- raster::crop(x = ETH_bio1, y = ETH_Adm0)
-ETH_bio1 <- raster::mask(x = ETH_bio1, mask = ETH_Adm0)
+# load final poverty shp ----
+shp_poverty <- readOGR("Data/final-poverty", "eth_adm1_poverty")
 
-ETH_bio12 <- raster::crop(x = ETH_bio12, y = ETH_Adm0)
-ETH_bio12 <- raster::mask(x = ETH_bio12, mask = ETH_Adm0)
+# load final conflict shp ----
+shp_conflict <- readOGR("Data/final-conflict", "eth_adm1_conflict")
 
 ```
 
 ## Abstract
-Since the end of the Cold War, Ethiopia - like much of Sub-Saharan Africa - has borne the brunt of a trifecta of development challenges: humanitarian conflict, climate change, and poverty. This paper examines which provinces in Ethiopia are suffering most from climate change, poverty, and conflict simultaneously using geospatial methods. This study develops and employs three metrics to measure poverty, conflict, and climate change respectively: (1) the 2020 MPI, (2) the number of fatalities due to conflict per 100,000 people, and (3) a simplified Palmer Drought Severity Index (PDSI), which uses annualized temperature and precipitation data to measure drought and flood risk. The techniques employed include map algebra to normalize historic annual temperature and precipitation data, resampling rasters, and spatial joins to generate Adm 1-level choropleth maps of Ethiopia on the three metrics. The study finds that no one Adm 1 region of Ethiopia ranks high on all three indices. The eastern Afar and Somali regions face severe poverty and high drought and flood risk, scoring high on both the simplified Palmer Drought Severity Index (values ranging from 0.3 - 0.5) and the 2020 MPI with values >= 0.5. The study also finds that the western Benshangul-Gumaz region faces high conflict and high drought/flood risk, with an average of 1.6 conflict-driven fatalities per 100,000 people and score of 0.65 on the simplified Palmer Drought Severity Index. These findings can be used to support policymakers and civil society in Ethiopia responsible for the geographic targeting of social programs (climate adaptation programs, humanitarian aid, cash transfers, etc) that could the trifecta of challenges.
+Since the end of the Cold War, Ethiopia - like much of Sub-Saharan Africa - has borne the brunt of a trifecta of development challenges: humanitarian conflict, climate change, and poverty. This paper examines which provinces in Ethiopia are suffering most from climate change, poverty, and conflict simultaneously using geospatial methods. This study develops and employs three metrics to measure poverty, conflict, and climate change respectively: (1) the 2020 MPI, (2) the number of fatalities due to conflict per 100,000 people, and (3) a simplified Palmer Drought Severity Index (PDSI), which uses annualized temperature and precipitation data to measure drought and flood risk. The techniques employed include map algebra to normalize historic annual temperature and precipitation data, resampling rasters, and spatial joins to generate Adm 1-level choropleth maps of Ethiopia on the three metrics. The study finds that no one Adm 1 region of Ethiopia ranks high on all three indices. The eastern Afar and Somali regions face severe poverty and high drought and flood risk, scoring high on both the simplified Palmer Drought Severity Index (values ranging from 0.3 - 0.5) and the 2020 MPI with values >= 0.5. The study also finds that the western Benshangul-Gumaz region faces high conflict and high drought/flood risk, with an average of 1.6 conflict-driven fatalities per 100,000 people and score of 0.65 on the simplified Palmer Drought Severity Index. These findings can be used to support policymakers and civil society in Ethiopia responsible for the geographic targeting of social programs (climate adaptation programs, humanitarian aid, cash transfers, etc) that could ameliorate the trifecta of challenges.
 
 ## Introduction
 Developing nations are increasingly facing a triple threat: the brunt of climate change, poverty, and humanitarian conflict. Peer-reviewed research in sociology, political science and development economics has shown that each of these factors is directionally linked to each of the others as underlying causes and products of them. At the nexus of climate change and poverty, for example, lies a multitude of linkages, including public health challenges, energy access, and a lack of foreign direct investment. Hallegatte et. al’s (2018) study finds that the climate-poverty link goes both ways: not only is poverty a driver of people's vulnerability to climate-related shocks and stressors, but this vulnerability to the climate keeps people in poverty as well. Taking the connection between climate change and conflict, research has argued that climate change leads resource competition, mass migration, and as a result, an increase in violence conflict worldwide. To that end, more attention is being given to the causal factors behind climate change and its connection to conflict, such as changes in precipitation and temperature, natural disasters, and macroeconomic growth. The climate-conflict connection has also led to an influx worldwide in climate refugees, a term which refers to people displaced by climate change. This phenomenon, some have argued, is now deserving of inclusion in the UNHCR’s definition of a refugee and entitlement of the benefits associated with refugee status in the UN countries that host them. Finally, at the poverty-conflict nexus lies a multitude of dynamics that leave the poor poorer and the vulnerable even more so. For one, financial and political factors, such as high income inequality, a lack of human and property rights for ethnic minorities, and the failure to remedy colonial-era injustices, are key factors that have incited armed conflict in the developing world in the last 60 years. For another, war disproportionately affects those in poverty, leading to the persistence of cycles of both poverty and war alike.
 
 In East Africa, since the early 2000s natural disasters have struck the coasts and mainland with increasing frequency. Agriculture, which 40% of the East African population depends on for its livelihood, is threatened by the desert locust outbreak which began in early 2020 and has destroyed tens of thousands of hectares of cropland. Seasonal catastrophic flooding, droughts, and fires in Ethiopia, Kenya and Tanzania - all of which disproportionately affects the urban poor. 
 
-```{r shpload, echo=F}
-# load ETH Adm 1 shapefiles ----
-shp <- readOGR("Data/ETH-GADM-Adm-Boundaries", "gadm36_ETH_1")
+```{r shpload, warning=F, echo=F, message=F, error=F}
 
 # map choropleth via leaflet ----
 basemap <- leaflet() %>% addProviderTiles('CartoDB.Positron')
 
 m <- basemap %>% addPolygons(data=shp,
-                             color = "grey",
-                             fill = 'blue',
-                             weight = 2,
+                             color = "green",
+                             weight = 1,
                              label = shp$NAME_1,
                              fillOpacity = 0.2)
+
 m
 ```
 
@@ -72,55 +68,134 @@ The data used for this study came from 5 unique sources:
 
 The following section details the methods used to analyze poverty, conflict, and climate change in Ethiopia using three measures: the Global Multidimensional Poverty Index, conflict-driven fatalities per 100,000 people, and a simplified Palmer Drought Severity Index (PDSI).
 
-*Poverty:* Relative to the other two components (conflict severity and climate change), the methods used to analyze multidimensional poverty were simple and straightforward. Using Python to clean the 2020 MPI data at the Adm 1 level, a choropleth map of multidimensional poverty index at Adm 1 level was generated to see where poverty was most and least severe across Ethiopia. The Oxford 2020 MPI data was cleaned and merged with OCHA Ethiopia sub-national population data. The cleaning focused on making sure that all Adm 1 levels were consistently named, which was required to do the merge. For example, there are multiple spellings of the Adm 1 region “Addis Ababa”, and as such the data was cleaned to correct for this. Figure 1 provides the resulting choropleth map of poverty summarizing this portion of the study.
+### Poverty
+
+Relative to the other two components (conflict severity and climate change), the methods used to analyze multidimensional poverty were simple and straightforward. Using Python to clean the 2020 MPI data at the Adm 1 level, a choropleth map of multidimensional poverty index at Adm 1 level was generated to see where poverty was most and least severe across Ethiopia. The Oxford 2020 MPI data was cleaned and merged with OCHA Ethiopia sub-national population data. The cleaning focused on making sure that all Adm 1 levels were consistently named, which was required to do the merge. For example, there are multiple spellings of the Adm 1 region “Addis Ababa”, and as such the data was cleaned to correct for this. Figure 1 provides the resulting choropleth map of poverty summarizing this portion of the study.
 
 **Table 1.** Global Multidimensional Poverty Index for Ethiopia. Poverty is more severe in the eastern districts of Ethiopia: Somali and Afar.
 
-**Figure 2.** 2020 Global Multidimensional Poverty Index for Ethiopia. Poverty is more severe in the eastern districts of Ethiopia: Somali and Afar.
+```{r poverty, warning=F, echo=F}
 
-*Conflict:* ‘Conflict’ was measured as the number of conflict-driven fatalities per 100,000 people. This metric was generated using the ACLED data and OCHA Ethiopia sub-national population data. Both QGIS and Python were used to compute this metric. Using QGIS, a spatial join was done on the ACLED point data and the Ethiopia Adm 1 shapefile to sum the number of fatalities in each Adm 1 region. This layer was then reprojected to the standard WGS 84 coordinate reference system and exported as a shapefile. Using Python, this shapefile containing the number of conflict-driven fatalities per Adm 1 region was merged with the OCHA Ethiopia Adm 1-level population data. Finally, the following formula was applied to calculate the number of conflict-driven fatalities per 100,000 people:
+# define choropleth color palette for legend using values from other leaflet plots
+bins <- c(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, Inf)
+pal <- colorBin(palette_poverty_conflict, domain = shp_poverty$MPI, bins = bins)
+
+# basemap
+m <- basemap %>% addPolygons(data=shp_poverty,
+                             color = "none",
+                             weight = 2,
+                             fillOpacity = 0.2)
+
+# add ETH Adm 1 regions
+m <- m %>%
+  addPolygons(data=shp_poverty,
+              fillColor = ~pal(shp_poverty$MPI),
+              stroke = TRUE,
+              color = "grey",
+              weight=1,
+              dashArray = "",
+              fillOpacity = 0.35,
+              highlight = highlightOptions(
+                weight = 2,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 1,
+                bringToFront = TRUE),
+              label = shp_poverty$MPI,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"))
+
+# add legend
+m <- m %>% addLegend(pal = pal,
+                     values = shp_poverty$MPI,
+                     title = "2020 MPI",
+                     position = "topright")
+m
+
+```
+
+**Figure 2. 2020 Global Multidimensional Poverty Index for Ethiopia.** Poverty is more severe in the eastern districts of Ethiopia: Somali and Afar.
+
+### Conflict
+
+‘Conflict’ was measured as the number of conflict-driven fatalities per 100,000 people. This metric was generated using the ACLED data and OCHA Ethiopia sub-national population data. Both QGIS and Python were used to compute this metric. Using QGIS, a spatial join was done on the ACLED point data and the Ethiopia Adm 1 shapefile to sum the number of fatalities in each Adm 1 region. This layer was then reprojected to the standard WGS 84 coordinate reference system and exported as a shapefile. Using Python, this shapefile containing the number of conflict-driven fatalities per Adm 1 region was merged with the OCHA Ethiopia Adm 1-level population data. Finally, the following formula was applied to calculate the number of conflict-driven fatalities per 100,000 people:
 
 *Fatalities per 100,000 people = ( Fatalities per Adm 1 Adm 1 population ) x 100,000*
 
-**Figure 3.** Number of conflict-driven fatalities per 100,000 people in Ethiopia. The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
+```{r conflict, warning=F, echo=F}
 
-**Table 2.** Number of conflict-driven fatalities per 100,000 in Ethiopia. The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
+# map conflict ----
 
-*Climate change:* An index to measure climate change was developed using the Palmer Drought Severity Index (PDSI) developed by Dai et. al (2004) as a model. The PDSI was chosen as a model for its simplicity; it uses readily available monthly temperature and precipitation data to estimate relative dryness as a measure of drought risk - both available in the World Climate database at high resolution. The PDSI has been reasonably successful at quantifying long-term drought. The resulting index is referred to as the ‘simplified PDSI’ in this paper. This index was generated and mapped entirely in R and RStudio. The following steps were used to generate and map the simplified PDSI across Adm 1 regions.
+# define choropleth color palette for legend using values from other leaflet plots
+bins <- c(seq(0, 1.6, by=0.2), Inf)
+pal <- colorBin(palette_poverty_conflict, domain = shp_conflict$fataliti_1, bins = bins)
+
+# basemap
+m <- basemap %>% addPolygons(data=shp_conflict,
+                             color = "none",
+                             weight = 2,
+                             fillOpacity = 0.2)
+
+# add ETH Adm 1 regions
+m <- m %>%
+  addPolygons(data=shp_conflict,
+              fillColor = ~pal(shp_conflict$fataliti_1),
+              stroke = TRUE,
+              color = "grey",
+              weight=1,
+              dashArray = "",
+              fillOpacity = 0.35,
+              highlight = highlightOptions(
+                weight = 3,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 1,
+                bringToFront = TRUE),
+              label = shp_conflict$fataliti_1,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto"))
+
+# add legend
+m <- m %>% addLegend(pal = pal,
+                     values = shp_conflict$fataliti_1,
+                     title = "Fatalities per 100k",
+                     position = "topright")
+m
+
+
+```
+
+**Figure 3. Number of conflict-driven fatalities per 100,000 people in Ethiopia.** The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
+
+**Table 2. Number of conflict-driven fatalities per 100,000 in Ethiopia.** The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
+
+### Climate Change
+
+An index to measure climate change was developed using the Palmer Drought Severity Index (PDSI) developed by Dai et. al (2004) as a model. The PDSI was chosen as a model for its simplicity; it uses readily available monthly temperature and precipitation data to estimate relative dryness as a measure of drought risk - both available in the World Climate database at high resolution. The PDSI has been reasonably successful at quantifying long-term drought. The resulting index is referred to as the ‘simplified PDSI’ in this paper. This index was generated and mapped entirely in R and RStudio. The following steps were used to generate and map the simplified PDSI across Adm 1 regions.
 
 ### 1 Mean Annual Temperature (BIO1) and Annual Precipitation (BIO12), World Climate database
 
 The first step was to download, subset, crop and mask Ethiopia Adm 0 shapefile and the World Climate database (raster stack) at 2.5-m resolution. The data of interest is the BIO1 and BIO12 variables in the World Climate database. BIO1 refers to mean annual temperature and BIO12 refers to annual precipitation.
 
-```{r bio1, warning=F, echo=T}
+```{r, include=F}
+# download data: GADM ETH Adm0 boundaries and WorldClim database ----
+ETH_Adm0 <- raster::getData(name = "GADM", country = "ETH", level = 0)
+ETH_bio <- raster::getData(name = "worldclim", var = "bio", res = 2.5) # rasterstack
 
-# map bio1
-raster_colorPal <- colorNumeric(palette = heat.colors(64),
-                                domain = values(ETH_bio1),
-                                na.color = NA)
-leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addRasterImage(x = ETH_bio1,
-                 color = raster_colorPal) %>%
-  addLegend(title = "ETH Bio 1: Annual Mean Temperature",
-            values = values(ETH_bio1),
-            pal = raster_colorPal)
+# get annual trends data (bio1, annual mean temp and bio12, precipitation) ----
+ETH_bio1 <- ETH_bio[[1]] # annual mean temp in Ethiopia from 1970 to 2000
+ETH_bio12 <- ETH_bio[[12]] # annual precipitation in Ethiopia from 1970 to 2000
 
-```
+# Crop and mask each raster layer to Ethiopia extent ----
+ETH_bio1 <- raster::crop(x = ETH_bio1, y = ETH_Adm0)
+ETH_bio1 <- raster::mask(x = ETH_bio1, mask = ETH_Adm0)
 
-```{r bio12, warning=F, echo=T}
-
-# map bio12 
-raster_colorPal <- colorNumeric(palette = heat.colors(64),
-                                domain = values(ETH_bio12),
-                                na.color = NA)
-leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addRasterImage(x = ETH_bio12,
-                 color = raster_colorPal) %>%
-  addLegend(title = "ETH Bio 12: Annual Precipitation",
-            values = values(ETH_bio12),
-            pal = raster_colorPal)
+ETH_bio12 <- raster::crop(x = ETH_bio12, y = ETH_Adm0)
+ETH_bio12 <- raster::mask(x = ETH_bio12, mask = ETH_Adm0)
 
 ```
 
@@ -132,9 +207,7 @@ The next step was to generate a simplified index for climate change vulnerabilit
 
 *Normalized Raster value = (Raster value - Min value of raster) / (Max value of raster - Min value of raster)*
 
-The normalized BIO1 and BIO12 rasters are as follows:
-
-```{r normalizebio1, warning=F, echo=T}
+```{r normalize, warning=F, echo=T}
 
 # normalize bio1 data using the following formula: (actual val - min val) / (max val - min val) ----
 r1 <- ETH_bio1
@@ -142,6 +215,19 @@ min_val = minValue(ETH_bio1)
 max_val = maxValue(ETH_bio1)
 r1 <- overlay(r1, fun=function(x){return( (x - min_val)/(max_val - min_val) )}) 
 
+# normalize bio12 data using same formula ----
+r2 <- ETH_bio12
+min_val = minValue(ETH_bio12)
+max_val = maxValue(ETH_bio12)
+
+r2 <- overlay(r2, fun=function(x){return( (x - min_val)/(max_val - min_val) )})
+
+```
+
+The normalized BIO1 and BIO12 rasters are as follows:
+
+
+```{r, warning=F, echo=F}
 raster_colorPal <- colorNumeric(palette = heat.colors(64),
                                 domain = values(r1),
                                 na.color = NA)
@@ -156,15 +242,9 @@ leaflet() %>%
 
 ```
 
-```{r normalizebio12, warning=F, echo=T}
+**Figure 4. Map of BIO1 - Normalized.**
 
-# normalize bio12 data using same formula ----
-r2 <- ETH_bio12
-min_val = minValue(ETH_bio12)
-max_val = maxValue(ETH_bio12)
-
-r2 <- overlay(r2, fun=function(x){return( (x - min_val)/(max_val - min_val) )})
-
+```{r, warning=F, echo=F}
 raster_colorPal <- colorNumeric(palette = heat.colors(64),
                                 domain = values(r2),
                                 na.color = NA)
@@ -177,6 +257,8 @@ leaflet() %>% # Plot
             pal = raster_colorPal) 
 
 ```
+
+**Figure 5. Map of BIO12 - Normalized.**
 
 **b. Resample the BIO12 raster to the BIO1 extent and resolution.** The BIO1 and BIO12 rasters needed to be resampled in order to align both the extent and resolution of the data. This was done using bilinear interpolation because both rasters contained continuous data. The resampled rasters are as follows
 
@@ -195,12 +277,14 @@ r2
 
 *Raster of Simplified PDSI = (Normalized BIO1 raster + Normalized Bio12 raster ) / 2*
 
-The result is a raster of the simplified PDSI values, as shown here:
-
-```{r doit, warning=F, echo=T}
+```{r, warning=F, echo=T}
 # generate simplified Palmer Drought Severity Index by taking mean of the two normalized indices ----
 r3 <- overlay(r1, r2, fun=function(x, y){return( (x + y)/2 )})
+```
 
+The result is a raster of the simplified PDSI values, as shown here:
+
+```{r doit, warning=F, echo=F}
 raster_colorPal <- colorNumeric(palette = heat.colors(64),
                                 domain = values(r3),
                                 na.color = NA)
@@ -209,10 +293,12 @@ leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addRasterImage(x = r3,
                  color = raster_colorPal) %>%
-  addLegend(title = "Simplified PDSI",
+  addLegend(title = "Simplified PDSI Values",
             values = values(r3),
             pal = raster_colorPal) 
 ```
+
+**Figure 6. Map of Simplified PDSI Values.**
 
 The simplified PDSI values correspond to a simple mean of the normalized precipitation and temperature rasters. As such, we should interpret this index as follows: regions that score somewhere between 0.3 to 0.5 on this index are at elevated risk of either drought or flooding conditions. In other words, regions where the range between their BIO1 (mean annual temperature) and BIO12 (annual precipitation) values are high indicate regions that are both hotter and more dry or regions that are both colder and more wet. These, respectively, are conditions for drought or flood, and thus indicate where climate vulnerability in Ethiopia is higher. Regions where the range between their BIO1 and BIO12 values are low are regions that are either hotter and more wet, or colder and more dry. These regions are at less risk of drought or flood.
 
@@ -220,7 +306,7 @@ The simplified PDSI values correspond to a simple mean of the normalized precipi
 
 The last step was to generate a choropleth map of the simplified PDSI values across Ethiopia's Adm 1 regions. First, the raster data of simplified PDSI values was extracted and averaged by polygon using the Adm 1 shapefile. Then, the mean of these extracted values was calculated for each Adm 1 region, resulting in 11 mean simplified PDSI values, one for each Adm 1 region of Ethiopia. These mean values were finally appended to the Adm 1 shapefile. These steps are shown here:
 
-```{r choroplethclimatechange, warning=F, echo=T}
+```{r aggregate, warning=F, echo=T}
 
 # calculate mean index vals per polygon ----
 r3.vals <- raster::extract(r3, shp)
@@ -230,11 +316,11 @@ shp@data$index_mean = as.numeric(r3.mean)
 
 The resulting index values were plotted onto a Leaflet web map as shown below:
 
-```{r map, warning=F, echo=F}
+```{r map-climate, warning=F, echo=F}
 
 # define choropleth color palette for legend using values from other leaflet plots
 bins <- c(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, Inf)
-pal <- colorBin("Accent", domain = shp$index_mean, bins = bins)
+pal <- colorBin(palette_climate_change, domain = shp$index_mean, bins = bins)
 
 # basemap
 m <- basemap %>% addPolygons(data=shp,
@@ -271,7 +357,7 @@ m
 
 ```
 
-**Figure 4. Simplified PDSI values across Ethiopia.** The values of the simplified PDSI that indicate all 11 Adm 1 regions of Ethiopia to be at elevated risk of either drought or flood conditions.
+**Figure 7. Choropleth Map of Simplified PDSI Values at Adm 1 level.** The values of the simplified PDSI that indicate all 11 Adm 1 regions of Ethiopia to be at elevated risk of either drought or flood conditions.
 
 **Table 3. Simplified PDSI values across Ethiopia.** All regions of Ethiopia have elevated risk of either flood or drought conditions based on this index.
 
