@@ -13,6 +13,8 @@ library(raster)
 library(leaflet)
 library(rgdal)
 library(tidyverse)
+library(kableExtra)
+library(knitr)
 
 # palette used for choropleth maps
 palette_poverty_conflict = "Spectral"
@@ -71,6 +73,15 @@ The following section details the methods used to analyze poverty, conflict, and
 ### Poverty
 
 Relative to the other two components (conflict severity and climate change), the methods used to analyze multidimensional poverty were simple and straightforward. Using Python to clean the 2020 MPI data at the Adm 1 level, a choropleth map of multidimensional poverty index at Adm 1 level was generated to see where poverty was most and least severe across Ethiopia. The Oxford 2020 MPI data was cleaned and merged with OCHA Ethiopia sub-national population data. The cleaning focused on making sure that all Adm 1 levels were consistently named, which was required to do the merge. For example, there are multiple spellings of the Adm 1 region “Addis Ababa”, and as such the data was cleaned to correct for this. Figure 1 provides the resulting choropleth map of poverty summarizing this portion of the study.
+
+```{r, echo=F, warning=F, message=F, error=F}
+
+dfA <- shp_poverty %>% as.data.frame() %>%
+  select(NAME_1, MPI) %>% arrange(desc(MPI)) %>% rename('District (Adm 1)' = NAME_1)
+
+dfA %>% kbl() %>% kable_material(c("striped", "hover"))
+
+```
 
 **Table 1.** Global Multidimensional Poverty Index for Ethiopia. Poverty is more severe in the eastern districts of Ethiopia: Somali and Afar.
 
@@ -171,6 +182,16 @@ m
 
 **Figure 3. Number of conflict-driven fatalities per 100,000 people in Ethiopia.** The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
 
+```{r, echo=F, warning=F, message=F, error=F}
+
+dfB <- shp_conflict %>% as.data.frame() %>%
+  select(NAME_1, fataliti_1) %>% arrange(desc(fataliti_1)) %>% rename('District (Adm 1)' = NAME_1,
+                                                                      'Fatalities per 100k' = fataliti_1)
+
+dfB %>% kbl() %>% kable_material(c("striped", "hover"))
+
+```
+
 **Table 2. Number of conflict-driven fatalities per 100,000 in Ethiopia.** The western Benshangul-Gumaz district has the highest conflict-driven fatalities per 100,000 rate, followed by the Harari People and Dire Dawa districts.
 
 ### Climate Change
@@ -225,7 +246,6 @@ r2 <- overlay(r2, fun=function(x){return( (x - min_val)/(max_val - min_val) )})
 ```
 
 The normalized BIO1 and BIO12 rasters are as follows:
-
 
 ```{r, warning=F, echo=F}
 raster_colorPal <- colorNumeric(palette = heat.colors(64),
@@ -359,7 +379,29 @@ m
 
 **Figure 7. Choropleth Map of Simplified PDSI Values at Adm 1 level.** The values of the simplified PDSI that indicate all 11 Adm 1 regions of Ethiopia to be at elevated risk of either drought or flood conditions.
 
+```{r, echo=F, warning=F, message=F, error=F}
+
+dfC <- shp %>% as.data.frame() %>%
+  select(NAME_1, index_mean) %>% arrange(desc(index_mean)) %>% rename('District (Adm 1)' = NAME_1,
+                                                                      'Mean PDSI Value' = index_mean)
+
+dfC %>% kbl() %>% kable_material(c("striped", "hover"))
+
+```
+
 **Table 3. Simplified PDSI values across Ethiopia.** All regions of Ethiopia have elevated risk of either flood or drought conditions based on this index.
+
+```{r, echo=F, warning=F, message=F, error=F}
+
+df <- left_join(dfA, dfB, by = "District (Adm 1)")
+df <- left_join(df, dfC, by = "District (Adm 1)")
+
+df <- df %>% rename(NAME_1 = 'District (Adm 1)') %>%
+  arrange(NAME_1) %>% rename('District (Adm 1)' = NAME_1)
+
+df %>% kbl() %>% kable_material(c("striped", "hover"))
+
+```
 
 **Table 4. Summary table of all three metrics for poverty, conflict, and climate change.** No one Adm 1 region of Ethiopia ranks high on all three metrics. However, many rank high or 2 metrics. All rank high on one metric: climate change, measured using the simplified PDSI.
 

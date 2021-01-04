@@ -1,0 +1,5 @@
+"0",""
+"0","# calculate mean index vals per polygon ----"
+"0","r3.vals <- raster::extract(r3, shp)"
+"0","r3.mean <- lapply(r3.vals, FUN=mean)"
+"0","shp@data$index_mean = as.numeric(r3.mean)"

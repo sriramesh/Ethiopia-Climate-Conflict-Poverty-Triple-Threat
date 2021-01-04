@@ -1,0 +1,6 @@
+"0",""
+"0","df <- shp_conflict %>% as.data.frame() %>%"
+"0","  select(NAME_1, fataliti_1) %>% arrange(desc(fataliti_1)) %>% rename('District (Adm 1)' = NAME_1,"
+"0","                                                                      'Fatalities per 100k' = fataliti_1)"
+"0",""
+"0","df %>% kbl() %>% kable_material(c(""striped"", ""hover""))"

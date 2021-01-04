@@ -1,0 +1,5 @@
+"0",""
+"0","df <- shp_poverty %>% as.data.frame() %>%"
+"0","  select(NAME_1, MPI) %>% arrange(desc(MPI)) %>% rename('District (Adm 1)' = NAME_1)"
+"0",""
+"0","df %>% kbl() %>% kable_material(c(""striped"", ""hover""))"

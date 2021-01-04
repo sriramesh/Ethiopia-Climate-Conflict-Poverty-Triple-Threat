@@ -1,0 +1,2 @@
+"0","# generate simplified Palmer Drought Severity Index by taking mean of the two normalized indices ----"
+"0","r3 <- overlay(r1, r2, fun=function(x, y){return( (x + y)/2 )})"

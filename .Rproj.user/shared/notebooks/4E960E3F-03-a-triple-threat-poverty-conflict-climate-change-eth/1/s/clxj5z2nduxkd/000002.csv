@@ -1,0 +1,8 @@
+"0",""
+"0","df <- left_join(dfA, dfB, by = ""District (Adm 1)"")"
+"0","df <- left_join(df, dfC, by = ""District (Adm 1)"")"
+"0",""
+"0","df <- df %>% rename(NAME_1 = 'District (Adm 1)') %>%"
+"0","  arrange(NAME_1) %>% rename('District (Adm 1)' = NAME_1)"
+"0",""
+"0","df %>% kbl() %>% kable_material(c(""striped"", ""hover""))"
