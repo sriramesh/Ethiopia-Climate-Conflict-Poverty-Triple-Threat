@@ -1,3 +1,0 @@
-"0","df <- shp_poverty %>% as.data.frame() %>% select(NAME_1, MPI)"
-"0",""
-"0","kbl(df)"
